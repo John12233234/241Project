@@ -141,7 +141,7 @@ endmodule
 
 
 
-module datapath(resetGame, runSig,deadSig,jumpSig,outY,outX );
+module datapath(resetGame, runSig,deadSig,jumpSig,outY,outX,output_colour);
  input resetGame, runSig,deadSig,jumpSig;
  input [2:0] colour;
  output reg up_flag, right_flag, ld_square_completion, ld_move_status;
@@ -152,26 +152,19 @@ module datapath(resetGame, runSig,deadSig,jumpSig,outY,outX );
  reg [4:0] counter_draw;
  reg [7:0] x_reg;
  reg [6:0] y_reg;
- reg [15:0] counter1;
+ 
  
 always@(posedge clock) begin
-   if(ld_sDown) begin 
-       counter_draw <= 5'b00000;
-  counter1 <= 16'b0;
-  ld_move_status <= 1'b0;
-     ld_square_completion <= 1'b0;  
-  y_reg <= y_reg + 1'b1;
-  if(y_reg == 7'd116) up_flag = 1'b1;   
- end // S_ShiftRight:
+   if(runSig) begin 
+       outX <= 7'b0000010;
+       outY <= 7'd110;
+   end
+   
+ 
 
-   if(ld_sUp) begin 
-     counter_draw <= 5'b00000;
-  counter1 <= 16'b0;
-  ld_move_status <= 1'b0;
-  ld_square_completion <= 1'b0;
-       y_reg <= y_reg-1'b1;
-  if(y_reg == 7'b0) up_flag = 1'b0;   
- end // S_ShiftRight:
+   if(jumpSig) begin 
+   count_draw[4:0] <= 
+     
  
  if(ld_sRight) begin
    counter_draw <= 5'b00000;
