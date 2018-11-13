@@ -1,0 +1,234 @@
+module control (clock, reset, jumpKey,startKey,resetGame,runSig,deadSig,jumpSig);  //ld_sDown, ld_sUp, ld_sRight, ld_sLeft, ld_d, ld_drawNew, ld_reset_old, ld_done, plot, enable, up_flag, right_flag, ld_square_completion, ld_move_status);
+ input clock, reset, jumpKey,startKey;//up_flag, right_flag, ld_square_completion, ld_move_status;
+ output reg resetGame, runSig,deadSig,jumpSig; //ld_sDown, ld_sUp, ld_sRight, ld_sLeft, ld_d, ld_drawNew, plot, ld_done, ld_reset_old;
+ reg [5:0] current_state, next_state; 
+    
+    localparam  
+    start = 5'd0,
+    running = 5'd1,
+    jumping = 5'd2,
+    dead = 5'd3;
+    reset = 5'd4;
+    
+      /*S_Reset = 5'd0, 
+    S_DeleteOld = 5'd1,
+    S_StartAnimation = 5'd2,                
+                S_ShiftUp = 5'd3,
+    S_ShiftDown = 5'd4,
+    S_ShiftRight = 5'd5,
+                S_ShiftLeft = 5'd6,
+    S_PrintNew = 5'd7,
+    S_Done = 5'd8;
+    */
+    
+    
+// state table 
+always@(*)
+ begin: state_table 
+     case (current_state)
+   
+   start:begin
+   if(jump & ~reset)begin
+   next_state = jumping;
+   end
+   if(reset)
+   next_state = reset;
+   else
+   next_state = start;
+   end
+     
+   
+   running:begin 
+   if(dead & ~reset)
+   next_state = dead;
+   if(reset)
+   next_state = reset;
+   if(jump & ~dead & ~reset)
+   next_state = jumping;
+   else if(~jump & ~dead & ~reset) 
+   next_state = running;
+   end
+   
+   
+   jumping:begin
+   if(jumpDone & ~dead & ~reset)
+   next_state = running;
+   if(dead & ~reset)
+   next_state = dead;
+   if(reset)
+   next_state = reset;
+   else if(~jumpDone & ~dead & ~reset)
+   next_state = jumping;
+   
+   
+   dead:begin
+   if(jump & ~reset)
+   next_state = running;
+   if(reset)
+   next_state = reset;
+   else
+   next_state = dead;
+   end
+   
+   
+   reset: begin
+   if(reset)
+   next_state = reset;
+   else 
+   next_state = start;
+   end
+   
+   
+  default: next_state = start;
+  endcase
+ end
+
+ 
+ //output table 
+always @(*)
+  begin: enable_signals
+  resetGame = 1'b0;
+  deadSig = 1'b0;
+  //en_jump = 1'b0;
+  jumpSig = 1'b0;
+  runSig = 1'b0;
+  //res_clock = 1'b0;
+  
+  
+  
+  /*ld_sDown = 1'b0;       
+  ld_sUp = 1'b0;
+  ld_sRight = 1'b0;
+  ld_sLeft = 1'b0;
+  ld_d = 1'b0;
+  ld_drawNew = 1'b0;
+  ld_reset_old = 1'b0;
+  plot = 1'b0;
+  ld_done = 1'b0; */
+  
+  
+  case (current_state)
+ start: begin
+  jumpSig <= 1'b1; 
+   end
+ running: begin
+  runSig <= 1'b1; 
+   end
+ jumping: begin
+  jumpSig <= 1'b1; 
+   end
+   dead: begin
+        deadSig <= 1'b1; 
+   end 
+   reset: begin
+        resetGame <= 1'b1;
+   end
+   
+endcase
+end
+ 
+
+always@(posedge clock)
+   begin: state_FFs
+      if(!reset)       
+         current_state <= reset; 
+      else            
+     current_state <= next_state;
+   end // state_FFS
+endmodule
+
+
+
+
+
+module datapath(resetGame, runSig,deadSig,jumpSig,outY,outX );
+ input resetGame, runSig,deadSig,jumpSig;
+ input [2:0] colour;
+ output reg up_flag, right_flag, ld_square_completion, ld_move_status;
+ output reg [2:0] output_colour;
+ output reg [7:0] outX;
+ output reg [6:0] outY;
+
+ reg [4:0] counter_draw;
+ reg [7:0] x_reg;
+ reg [6:0] y_reg;
+ reg [15:0] counter1;
+ 
+always@(posedge clock) begin
+   if(ld_sDown) begin 
+       counter_draw <= 5'b00000;
+  counter1 <= 16'b0;
+  ld_move_status <= 1'b0;
+     ld_square_completion <= 1'b0;  
+  y_reg <= y_reg + 1'b1;
+  if(y_reg == 7'd116) up_flag = 1'b1;   
+ end // S_ShiftRight:
+
+   if(ld_sUp) begin 
+     counter_draw <= 5'b00000;
+  counter1 <= 16'b0;
+  ld_move_status <= 1'b0;
+  ld_square_completion <= 1'b0;
+       y_reg <= y_reg-1'b1;
+  if(y_reg == 7'b0) up_flag = 1'b0;   
+ end // S_ShiftRight:
+ 
+ if(ld_sRight) begin
+   counter_draw <= 5'b00000;
+   counter1 <= 16'b0;
+   ld_move_status <= 1'b0;
+   ld_square_completion <= 1'b0;
+  x_reg <= x_reg + 1'b1;
+  if(x_reg == 8'd156) right_flag = 1'b0;  
+ end // if(ld_sRight)
+ 
+ if(ld_sLeft) begin
+     counter_draw <= 5'b00000;
+  counter1 <= 16'b0;
+  ld_move_status <= 1'b0;
+  ld_square_completion <= 1'b0;
+     x_reg <= x_reg-1'b1;
+  if(x_reg == 8'b0) right_flag = 1'b1;
+ end // if(ld_sLeft)
+ 
+ if(ld_d) begin
+  if(counter1 <= 16'b0111111111111111)
+   begin
+    output_x <= counter1[7:0] ;
+    output_y <= counter1[14:8] ;
+    counter1 <= counter1 + 1'b1;
+    output_colour <= 3'b000;
+   end
+  if(counter1 == 16'b1000000000000000)
+  begin
+   ld_move_status <= 1'b1;
+  end
+ end // if(ld_d)
+ 
+ if(ld_drawNew) begin
+  if(counter_draw <= 5'b01111)
+  begin
+   output_x <= x_reg + counter_draw[1:0];
+   output_y <= y_reg + counter_draw[3:2];
+   counter_draw <= counter_draw + 1'b1;
+  end
+  if(counter_draw == 5'b10000)
+  begin
+      ld_square_completion <= 1'b1;
+   counter_draw <= 5'b00000;
+  end 
+  output_colour <= colour;
+ end // if(ld_drawNew)
+ 
+ if(ld_reset_old) begin
+     counter_draw <= 5'b0000;
+     counter1 <= 5'b00000; 
+     x_reg <= 8'b0; 
+       y_reg <= 7'b0;
+  ld_move_status <= 1'b0;
+     right_flag <= 1'b1;
+     up_flag <= 1'b0;
+     ld_square_completion <= 1'b0; 
+ end // if(ld_reset_old) 
+end
+endmodule // module
